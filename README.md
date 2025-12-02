@@ -55,8 +55,8 @@ Architecture micro-services Fullstack :
 
 ### 1) Cloner le dépôt
 ```bash
-git clone https://github.com/votre-utilisateur/projet-anac-aviation.git
-cd projet-anac-aviation
+git clone [https://github.com/votre-utilisateur/projet-anac-aviation.git](https://github.com/Prince637-boo/AeroCast.git)
+cd AeroCast
 
 ```
 ### 2) créer un fichier .env à le racine
