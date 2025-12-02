@@ -1,0 +1,71 @@
+services:
+
+  # Service d'authentication
+  service_auth:
+    build:
+      context: ./backend/service_auth
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_NAME=service_auth
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Service de traçabilité de baggage
+  service_baggages:
+    build:
+      context: ./backend/service_baggages
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_NAME=service_baggages
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+   # Service de météo IA
+  service_meteo_ia:
+    build:
+      context: ./backend/service_meteo_ia
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_NAME=service_meteo_ia
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    # Service de passerelle des APIs: Nginx
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      service_auth:
+        condition: service_healthy 
+      service_baggages:
+        condition: service_healthy
+      service_meteo_ia:
+        condition: service_healthy
+  
+  # service rabbitmq pour les files de messages
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
