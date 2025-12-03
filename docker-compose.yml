@@ -9,9 +9,10 @@ services:
       - SERVICE_NAME=service_auth
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
 
   # Service de traçabilité de baggage
   service_baggages:
@@ -25,6 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 90s
   
    # Service de météo IA
   service_meteo_ia:
@@ -38,6 +40,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 90s
 
     # Service de passerelle des APIs: Nginx
   gateway:
@@ -45,7 +48,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./backend/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       service_auth:
         condition: service_healthy 
