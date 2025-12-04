@@ -6,7 +6,7 @@ services:
       context: ./backend/app/api/service_auth_api
       dockerfile: Dockerfile
     image: service_auth
-    command: uvicorn app.main.app --host 0.0.0.0 --port ${PORT} ${DEBUG:+--reload}
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}", "${DEBUG:+--reload}"]
     env_file:
       - .env.dev
     ports:
@@ -32,7 +32,7 @@ services:
       context: ./backend/app/api/service_baggages_api
       dockerfile: Dockerfile
     image: service_baggages
-    command: uvicorn app.main.app --host 0.0.0.0 --port ${PORT} ${DEBUG:+--reload}
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}", "${DEBUG:+--reload}"]
     env_file:
       - .env.dev
     ports:
@@ -58,7 +58,7 @@ services:
       context: ./backend/app/api/service_meteo_ia_api
       dockerfile: Dockerfile
     image: service_meteo_ia
-    command: uvicorn app.main.app --host 0.0.0.0 --port ${PORT} ${DEBUG:+--reload}
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}", "${DEBUG:+--reload}"]
     env_file:
       - .env.dev
     ports:
