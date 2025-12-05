@@ -1,0 +1,13 @@
+http:
+  middlewares:
+    add-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+
+  routers:
+    api-dashboard:
+      rule: "PathPrefix(`/api`)"
+      entryPoints: ["web"]
+      service: api-service

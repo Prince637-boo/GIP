@@ -1,0 +1,31 @@
+[project]
+name = "aviation-backend"
+version = "0.1.0"
+description = "Backend monorepo for aviation project (auth, baggage, weather)"
+authors = [
+  { name="Adzanto Trésor", email="tresoradzanto7@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "aioredis>=2.0.1",
+    "alembic>=1.17.2",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.123.8",
+    "opentelemetry-api>=1.39.0",
+    "opentelemetry-exporter-otlp>=1.39.0",
+    "opentelemetry-instrumentation-aio-pika>=0.60b0",
+    "opentelemetry-instrumentation-asgi>=0.60b0",
+    "opentelemetry-instrumentation-fastapi>=0.60b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.60b0",
+    "opentelemetry-sdk>=1.39.0",
+    "passlib[bcrypt]>=1.7.4",
+    "prometheus-client>=0.23.1",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "python-jose[cryptography]>=3.5.0",
+    "sqlalchemy[asyncio]>=2.0.44",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[tool.uv]
+# optional uv config
