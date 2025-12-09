@@ -7,12 +7,45 @@ from .routers.baggages import router as baggage_router
 from .routers.admin import router as admin_router
 from .routers.ws import router as ws_router
 
-app = FastAPI(title="Baggage Tracking Service")
+# -------------------------------
+# INITIALISATION DE L'APPLICATION
+# -------------------------------
+app = FastAPI(
+    title="Baggage Tracking Service",
+    description="""
+    Service backend pour le suivi des bagages en temps réel.
+    
+    Routes principales :
+    - /baggages : pour les passagers et compagnies
+    - /admin/baggages : pour les administrateurs
+    - /ws/baggages/stream : WebSocket pour événements en temps réel
+    """,
+    version="1.0.0",
+)
 
-# ---- INITIALISATION OPENTELEMETRY AU DÉMARRAGE ----
+# -------------------------------
+# INITIALISATION OPENTELEMETRY
+# -------------------------------
+# Permet de tracer toutes les requêtes et opérations pour monitoring/observabilité
 init_tracing(app, db_engine=engine)
 
-# ROUTES
+# -------------------------------
+# INCLUSION DES ROUTERS
+# -------------------------------
+# Router pour les routes publiques (passager/compagnie)
 app.include_router(baggage_router)
+
+# Router pour les routes admin
 app.include_router(admin_router)
+
+# Router pour les WebSocket (temps réel)
 app.include_router(ws_router)
+
+# -------------------------------
+# POINTS D'EXTENSION
+# -------------------------------
+# Ici, on peut ajouter des événements startup/shutdown, middleware global, etc.
+# Exemple :
+# @app.on_event("startup")
+# async def on_startup():
+#     print("Application démarrée")
