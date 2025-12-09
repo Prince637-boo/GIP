@@ -4,7 +4,6 @@ from pydantic import ValidationError
 from services.weather.config import settings
 from services.weather.schemas.open_meteo import OpenMeteoResponse
 
-
 class OpenMeteoService:
     def __init__(self):
         self.api_url = settings.WEATHER_API_URL

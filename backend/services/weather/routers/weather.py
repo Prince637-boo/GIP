@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from libs.common.database import get_db
 from services.weather.schemas.weather import Weather as WeatherSchema, WeatherCreate
-from services.weather.crud.weather import get_latest_weather_by_coords, create_weather_data
+from services.weather.service_weather import get_latest_weather_by_coords, create_weather_data
 from services.weather.services.open_meteo import OpenMeteoService
+from services.weather.dependencies.weather_deps import get_open_meteo_service
+
+
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 
@@ -12,7 +15,8 @@ async def get_weather(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
     db: AsyncSession = Depends(get_db),
-    open_meteo_service: OpenMeteoService = Depends()
+    open_meteo_service: OpenMeteoService = Depends(get_open_meteo_service)
+
 ):
     # 1. Vérifier si des données récentes existent en BDD
     db_weather = await get_latest_weather_by_coords(db, lat=latitude, lon=longitude)

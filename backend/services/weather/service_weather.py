@@ -12,8 +12,8 @@ async def get_latest_weather_by_coords(db: AsyncSession, lat: float, lon: float,
     stmt = select(Weather).where(
         Weather.latitude == lat,
         Weather.longitude == lon,
-        Weather.timestamp >= datetime.utcnow() - timedelta(hours=max_age_hours)
-    ).order_by(Weather.timestamp.desc())
+        Weather.created_at >= datetime.utcnow() - timedelta(hours=max_age_hours)
+    ).order_by(Weather.created_at.desc())
     result = await db.execute(stmt)
     return result.scalars().first()
 
