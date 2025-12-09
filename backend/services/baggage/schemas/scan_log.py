@@ -1,14 +1,16 @@
-from pydantic import BaseModel
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict
 
 class ScanLogCreate(BaseModel):
     location: str
     device_info: str | None = None
 
 class ScanLogOut(BaseModel):
-    id: str
+    id: UUID
     location: str
     device_info: str | None
-    timestamp: str
+    timestamp: datetime
 
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)

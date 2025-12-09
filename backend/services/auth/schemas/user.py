@@ -1,5 +1,5 @@
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from services.auth.core.roles import UserRole
 
@@ -15,8 +15,8 @@ class UserOut(BaseModel):
     is_active: bool
     company_id: Optional[UUID] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None

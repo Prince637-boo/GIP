@@ -1,6 +1,7 @@
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     ENV: str = "development"
@@ -31,9 +32,10 @@ class Settings(BaseSettings):
         return f"postgresql://{data.get('DATABASE_USER')}:{data.get('DATABASE_PASSWORD')}@" \
                f"{data.get('DATABASE_HOST')}:{data.get('DATABASE_PORT')}/{data.get('DATABASE_NAME')}"
 
-    class Config:
-        env_file = ".env.dev"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = ConfigDict(
+        env_file=".env.dev",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 settings = Settings()

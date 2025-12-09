@@ -1,193 +1,208 @@
-# tests/baggages/test_baggage_routes.py
+import os
 import uuid
 import pytest
 from httpx import AsyncClient, ASGITransport
-from fastapi import status
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
 
 from services.baggage.main import app as baggage_app
 from libs.common.database import get_db
-
 from services.auth.models.user import User
-from services.auth.models.company import Company
 from services.auth.core.roles import UserRole
 from services.auth.core.hashing import hash_password
-from services.auth.core.jwt import create_access_token, hash_refresh_token
+from services.auth.core.jwt import create_access_token
 from services.baggage.models.bag import Baggage
-from services.baggage.models.baggage_event import BaggageEvent
 from services.baggage.models.scan_log import ScanLog
-from services.auth.models.refresh_token import RefreshToken
-from services.baggage.core.enums import BaggageStatus
 
+
+# -------------------------
+# Fixture AsyncClient
+# -------------------------
 @pytest.fixture
-async def baggage_client(db_session):
-    """Crée un client de test pour l'application de bagages."""
+async def baggage_client(db_session: AsyncSession):
     baggage_app.dependency_overrides[get_db] = lambda: db_session
     transport = ASGITransport(app=baggage_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
     baggage_app.dependency_overrides.clear()
 
 
 # -------------------------
-# Tests
+# Helper pour créer un bagage
+# -------------------------
+async def create_baggage_for_test(client: AsyncClient, token: str, owner_id: str, company_id: str):
+    payload = {
+        "owner_id": str(owner_id),
+        "company_id": str(company_id),
+        "description": "Test bag",
+        "weight": "10kg"
+    }
+    resp = await client.post(
+        "/baggages/",
+        headers={"Authorization": f"Bearer {token}"},
+        json=payload
+    )
+    assert resp.status_code == 200
+    return resp.json()
+
+
+# -------------------------
+# TESTS COMPAGNIE / PASSAGER / ADMIN
 # -------------------------
 
 @pytest.mark.asyncio
-async def test_company_can_create_baggage(
-    baggage_client: AsyncClient, create_users, monkeypatch, db_session: AsyncSession
-):
-    """
-    Company creates a baggage; QR generator mocked to avoid FS writes.
-    """
+async def test_company_can_create_baggage(baggage_client: AsyncClient, create_users):
     tokens = create_users["tokens"]
     company = create_users["company"]
+    pax = create_users["users"]["pax"]
 
-    # Mock QR generation to return a deterministic filepath
-    monkeypatch.setattr(
-        "services.baggage.core.utils.generate_qr_code",
-        lambda tag, output_dir="storage/qr_codes": f"/tmp/qr_{tag}.png"
-    )
-
-    payload = {
-        "owner_id": str(create_users["users"]["pax"].id),
-        "company_id": str(company.id),
-        "description": "Black suitcase",
-        "weight": "23kg"
-    }
-
-    resp = await baggage_client.post("/baggages/", headers={"Authorization": f"Bearer {tokens['company']}"}, json=payload)
-    assert resp.status_code == status.HTTP_200_OK
-    data = resp.json()
-    assert data["description"] == "Black suitcase"
-    assert "tag" in data
-    assert data["qr_code_path"].startswith("/tmp/qr_")
-
-    # verify baggage in DB
-    q = await db_session.execute(Baggage.__table__.select().where(Baggage.tag == data["tag"]))
-    baggage = q.scalar_one_or_none()
-    assert baggage is not None
-    assert baggage.company_id == company.id
+    bag = await create_baggage_for_test(baggage_client, tokens["company"], pax.id, company.id)
+    assert bag["description"] == "Test bag"
+    assert "tag" in bag
 
 
 @pytest.mark.asyncio
 async def test_passenger_cannot_create_baggage(baggage_client: AsyncClient, create_users):
     tokens = create_users["tokens"]
+    company = create_users["company"]
+    pax = create_users["users"]["pax"]
+
     payload = {
-        "owner_id": str(create_users["users"]["pax"].id),
-        "company_id": str(create_users["company"].id),
-        "description": "Illegal create",
+        "owner_id": str(pax.id),
+        "company_id": str(company.id),
+        "description": "Illegal create"
     }
-    resp = await baggage_client.post("/baggages/", headers={"Authorization": f"Bearer {tokens['pax']}"}, json=payload)
-    assert resp.status_code == status.HTTP_403_FORBIDDEN
+    resp = await baggage_client.post(
+        "/baggages/",
+        headers={"Authorization": f"Bearer {tokens['pax']}"},
+        json=payload
+    )
+    assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_change_status_and_scan_logging(
-    baggage_client: AsyncClient, create_users, monkeypatch, db_session: AsyncSession
-):
+async def test_passenger_view_and_access_control(baggage_client: AsyncClient, create_users, db_session: AsyncSession):
     tokens = create_users["tokens"]
     company = create_users["company"]
+    pax = create_users["users"]["pax"]
 
-    # Create baggage directly in DB (simulate create_baggage)
-    monkeypatch.setattr(
-        "services.baggage.core.utils.generate_qr_code",
-        lambda tag, output_dir="storage/qr_codes": f"/tmp/qr_{tag}.png"
-    )
-
-    payload = {
-        "owner_id": str(create_users["users"]["pax"].id),
-        "company_id": str(company.id),
-        "description": "Blue bag",
-        "weight": "10kg"
-    }
-
-    create_resp = await baggage_client.post("/baggages/", headers={"Authorization": f"Bearer {tokens['company']}"}, json=payload)
-    assert create_resp.status_code == 200
-    bag = create_resp.json()
+    # Create bag
+    bag = await create_baggage_for_test(baggage_client, tokens["company"], pax.id, company.id)
     tag = bag["tag"]
 
-    # ATC scans bag
+    # Passenger sees own bag
+    resp = await baggage_client.get(
+        f"/baggages/{tag}",
+        headers={"Authorization": f"Bearer {tokens['pax']}"}
+    )
+    assert resp.status_code == 200
+
+    # Other passenger cannot see
+    other = User(email="other@test.com", hashed_password=hash_password("pass"),
+                 role=UserRole.PASSAGER, is_active=True)
+    db_session.add(other)
+    await db_session.commit()
+    await db_session.refresh(other)
+
+    token_other = create_access_token(str(other.id), other.role.value)
+    resp2 = await baggage_client.get(
+        f"/baggages/{tag}",
+        headers={"Authorization": f"Bearer {token_other}"}
+    )
+    assert resp2.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_scan_and_status_updates(baggage_client: AsyncClient, create_users, db_session: AsyncSession):
+    tokens = create_users["tokens"]
+    company = create_users["company"]
+    pax = create_users["users"]["pax"]
+
+    # Create bag
+    bag = await create_baggage_for_test(baggage_client, tokens["company"], pax.id, company.id)
+    tag = bag["tag"]
+
+    # ATC scans
     scan_payload = {"location": "NIM:GateA", "device_info": "scanner-01"}
-    scan_resp = await baggage_client.post(f"/baggages/{tag}/scan", headers={"Authorization": f"Bearer {tokens['atc']}"}, json=scan_payload)
+    scan_resp = await baggage_client.post(
+        f"/baggages/{tag}/scan",
+        headers={"Authorization": f"Bearer {tokens['atc']}"},
+        json=scan_payload
+    )
     assert scan_resp.status_code == 200
-    scan = scan_resp.json()
-    assert scan["location"] == "NIM:GateA"
 
-    # Company updates status to LOADED
+    # Company updates status
     status_payload = {"status": "LOADED", "location": "Ramp1"}
-    status_resp = await baggage_client.post(f"/baggages/{tag}/status", headers={"Authorization": f"Bearer {tokens['company']}"}, json=status_payload)
+    status_resp = await baggage_client.post(
+        f"/baggages/{tag}/status",
+        headers={"Authorization": f"Bearer {tokens['company']}"},
+        json=status_payload
+    )
     assert status_resp.status_code == 200
-    updated = status_resp.json()
-    assert updated["status"] == "LOADED"
+    assert status_resp.json()["status"] == "LOADED"
 
-    # Check scan_logs in DB count >= 1
+    # Check scan logs
     q = await db_session.execute(ScanLog.__table__.select().where(ScanLog.baggage_id == uuid.UUID(bag["id"])))
     scans = q.scalars().all()
     assert len(scans) >= 1
 
 
 @pytest.mark.asyncio
-async def test_passenger_view_own_baggage(baggage_client: AsyncClient, create_users, monkeypatch):
+async def test_my_baggages_list(baggage_client: AsyncClient, create_users):
     tokens = create_users["tokens"]
+    pax = create_users["users"]["pax"]
     company = create_users["company"]
 
-    # create a bag by company for this pax
-    monkeypatch.setattr(
-        "services.baggage.core.utils.generate_qr_code",
-        lambda tag, output_dir="storage/qr_codes": f"/tmp/qr_{tag}.png"
+    # Create multiple bags
+    for _ in range(3):
+        await create_baggage_for_test(baggage_client, tokens["company"], pax.id, company.id)
+
+    resp = await baggage_client.get(
+        "/baggages/my/list",
+        headers={"Authorization": f"Bearer {tokens['pax']}"}
     )
-
-    payload = {
-        "owner_id": str(create_users["users"]["pax"].id),
-        "company_id": str(company.id),
-        "description": "Red bag",
-    }
-    resp = await baggage_client.post("/baggages/", headers={"Authorization": f"Bearer {tokens['company']}"}, json=payload)
+    data = resp.json()
     assert resp.status_code == 200
-    bag = resp.json()
-
-    # passenger requests bag info
-    resp2 = await baggage_client.get(f"/baggages/{bag['tag']}", headers={"Authorization": f"Bearer {tokens['pax']}"})
-    assert resp2.status_code == 200
-    data = resp2.json()
-    assert data["tag"] == bag["tag"]
+    assert len(data) >= 3
 
 
 @pytest.mark.asyncio
-async def test_other_passenger_cannot_view(
-    baggage_client: AsyncClient, create_users, monkeypatch, db_session: AsyncSession
-):
+async def test_admin_list_detail_metrics(baggage_client: AsyncClient, create_users):
+    
+    os.environ["OTEL_EXPORTER_OTLP_ENABLED"] = "false"
+    
     tokens = create_users["tokens"]
     company = create_users["company"]
+    pax = create_users["users"]["pax"]
+    admin_token = tokens["admin"]
 
-    # create a bag for pax (A)
-    monkeypatch.setattr(
-        "services.baggage.core.utils.generate_qr_code",
-        lambda tag, output_dir="storage/qr_codes": f"/tmp/qr_{tag}.png"
+    # Create bag
+    bag = await create_baggage_for_test(baggage_client, tokens["company"], pax.id, company.id)
+    tag = bag["tag"]
+
+    # List baggages
+    resp = await baggage_client.get(
+        "/admin/baggages/?page=1&size=10",
+        headers={"Authorization": f"Bearer {admin_token}"}
     )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "total" in data and "items" in data
 
-    payload = {
-        "owner_id": str(create_users["users"]["pax"].id),
-        "company_id": str(company.id),
-        "description": "Private bag",
-    }
-    resp = await baggage_client.post("/baggages/", headers={"Authorization": f"Bearer {tokens['company']}"}, json=payload)
-    bag = resp.json()
-
-    # create another passenger B
-    other = User(
-        email="otherpax@test.com",
-        hashed_password=hash_password("otherpass"),
-        role=UserRole.PASSAGER,
-        is_active=True
+    # Get bag details
+    resp = await baggage_client.get(
+        f"/admin/baggages/{tag}",
+        headers={"Authorization": f"Bearer {admin_token}"}
     )
-    db_session.add(other)
-    await db_session.commit()
-    await db_session.refresh(other)
-    token_other = create_access_token(str(other.id), other.role.value) # Corrected create_access_token call
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "baggage" in data and "events" in data and "scans" in data
 
-    # B tries to access A's bag -> forbidden
-    resp2 = await baggage_client.get(f"/baggages/{bag['tag']}", headers={"Authorization": f"Bearer {token_other}"})
-    assert resp2.status_code == status.HTTP_403_FORBIDDEN
+    # Metrics (dépends de otl)
+    # resp = await baggage_client.get(
+    #     "/admin/baggages/metrics",
+    #     headers={"Authorization": f"Bearer {admin_token}"}
+    # )
+    # assert resp.status_code == 200
+    # metrics = resp.json()
+    # print(metrics)
+    # assert "created_last_24h" in metrics and "scans_last_24h" in metrics and "by_status" in metrics

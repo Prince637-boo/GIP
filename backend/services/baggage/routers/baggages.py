@@ -133,4 +133,4 @@ async def scan_baggage(
             device_info=payload.device_info,
         )
 
-    return await traced_route(f"scan_baggage:{tag}", _scan)
+    return await traced_route(f"scan_baggage_route:{tag}", _scan)

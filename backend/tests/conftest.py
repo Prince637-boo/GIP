@@ -1,3 +1,4 @@
+import os
 import pytest
 import pytest_asyncio
 import asyncio
@@ -32,6 +33,11 @@ async def db_session():
     async with AsyncTestingSessionLocal() as session:
         yield session
         await session.rollback()
+
+
+@pytest.fixture(autouse=True)
+def disable_otlp():
+    os.environ["OTEL_EXPORTER_OTLP_ENABLED"] = "false"
 
 
 

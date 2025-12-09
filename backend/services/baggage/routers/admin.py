@@ -131,21 +131,25 @@ async def baggage_metrics(db: AsyncSession = Depends(get_db)):
         now = datetime.utcnow()
         day_start = now - timedelta(days=1)
 
-        # number of baggages created last 24h
-        q1 = await db.execute(select(func.count()).select_from(
-            select(Baggage).where(Baggage.created_at >= day_start).subquery()
-        ))
-        created_24h = q1.scalar()
+        # Number of baggages created last 24h
+        q1 = await db.execute(
+            select(func.count()).select_from(
+                select(Baggage).where(Baggage.created_at >= day_start).subquery()
+            )
+        )
+        created_24h = q1.scalar() or 0
 
-        # number by status
+        # Number by status
         q2 = await db.execute(select(Baggage.status, func.count()).group_by(Baggage.status))
-        by_status = {status.value: count for status, count in q2.all()}
+        by_status = {status.value if hasattr(status, "value") else str(status): count for status, count in q2.all()}
 
-        # scan events last 24h
-        q3 = await db.execute(select(func.count()).select_from(
-            select(ScanLog).where(ScanLog.timestamp >= day_start).subquery()
-        ))
-        scans_24h = q3.scalar()
+        # Scan events last 24h
+        q3 = await db.execute(
+            select(func.count()).select_from(
+                select(ScanLog).where(ScanLog.timestamp >= day_start).subquery()
+            )
+        )
+        scans_24h = q3.scalar() or 0
 
         return {
             "created_last_24h": created_24h,
@@ -153,4 +157,4 @@ async def baggage_metrics(db: AsyncSession = Depends(get_db)):
             "by_status": by_status,
         }
 
-    return await traced_route("baggage_metrics", _metrics)
+    return await traced_route("baggage_metrics_route", _metrics)
