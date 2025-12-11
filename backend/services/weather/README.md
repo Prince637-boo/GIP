@@ -1,39 +1,94 @@
-# Service Météo
+# Service d'Orientation Passagers
 
-Ce service fournit des données météorologiques en temps réel pour des coordonnées géographiques spécifiques. Il agit comme un proxy intelligent, mettant en cache les données pour réduire la latence et limiter les appels à l'API externe.
+Ce service fournit aux passagers des instructions optimales pour se déplacer dans l’aéroport en fonction de la météo, de l’état du vol et du suivi des bagages. Les instructions sont calculées en temps réel pour minimiser les retards et assurer une expérience fluide.
 
-## Fonctionnalités
+## Architecture
 
-- Récupération des données météo actuelles (température, vitesse du vent) à partir de l'API [Open-Meteo](https://open-meteo.com/).
-- Mise en cache en base de données des résultats pour éviter les appels redondants.
-- Validation des réponses de l'API externe à l'aide de schémas Pydantic.
-- Une tâche de fond (worker Celery) qui met à jour périodiquement les données météo pour des lieux d'intérêt prédéfinis.
+Le service s’appuie sur un moteur de décision (DecisionEngine) qui agrège plusieurs sources de données pour générer des instructions personnalisées :
 
-## Endpoint API
+- Données météo : via `MeteoServiceClient`
+- Statut des bagages : via `BagageServiceClient`
+- Informations vol : via `VolServiceClient`
+- Décision et instructions : le DecisionEngine combine les données pour produire :
+  - instructions détaillées (sécurité, zone d’attente, embarquement),
+  - alertes (changement de porte, météo critique, urgence temporelle),
+  - parcours optimal JITB (Just In Time Boarding).
 
-- `GET /weather/`: Récupère les données météo pour une latitude et une longitude données.
-  - **Paramètres de requête :** `latitude` (float), `longitude` (float).
-  - **Comportement :**
-    1.  Vérifie d'abord si des données récentes existent dans la base de données.
-    2.  Si ce n'est pas le cas, appelle l'API Open-Meteo.
-    3.  Sauvegarde la nouvelle réponse dans la base de données avant de la retourner.
+## Endpoints
 
-## Tâche de fond (Celery)
+### Obtenir l'orientation (GET)
+GET `/api/orientation/{numero_vol}/{id_bagage}?position_estimee=<position>`
 
-- **Tâche :** `services.weather.workers.tasks.fetch_and_save_weather`
-- **Fréquence :** Exécutée toutes les heures (configurable).
-- **Action :** Récupère et sauvegarde les données météo pour une liste de lieux définis dans `services/weather/config.py`.
+Paramètres :
+- `numero_vol` : numéro du vol (ex. `AF1234`)
+- `id_bagage` : identifiant du bagage
+- `position_estimee` (optionnel) : position actuelle du passager
 
-## Variables d'environnement
+Réponse : `OrientationResponse`  
+Contient : situation actuelle, instructions détaillées, alertes, parcours recommandé.
 
-- `DATABASE_URL`: L'URL de connexion à la base de données PostgreSQL.
-- `WEATHER_API_URL`: L'URL de base de l'API Open-Meteo.
-- `CELERY_BROKER_URL`: L'URL du broker de messages RabbitMQ.
+Exemple d’appel :
+```
+GET /api/orientation/AF1234/BAG123?position_estimee=zone_embarquement
+```
+
+### Obtenir l'orientation (POST)
+POST `/api/orientation/`
+
+Payload JSON :
+```json
+{
+  "numero_vol": "AF1234",
+  "id_bagage": "BAG123",
+  "position_estimee": "zone_embarquement"
+}
+```
+
+Réponse : `OrientationResponse` (mêmes champs que GET)
+
+### Vérification de santé
+GET `/api/orientation/health`
+
+Réponse exemple :
+```json
+{
+  "status": "healthy",
+  "service": "orientation-service",
+  "timestamp": "2025-12-11T07:00:00Z"
+}
+```
+
+## Fonctionnalités principales
+
+- Calcul en temps réel de l’orientation d’un passager dans l’aéroport.
+- Génération automatique d’instructions et d’alertes selon le contexte :
+  - problème de bagage,
+  - changement de porte,
+  - conditions météo critiques,
+  - temps restant avant embarquement.
+- Couplage avec les services de bagages, météo et vols pour un écosystème complet.
+- Logging des orientations calculées pour suivi et amélioration du DecisionEngine.
+
+## Dépendances
+
+- FastAPI
+- SQLAlchemy (si intégration base de données pour logs)
+
+Services externes :
+- `MeteoServiceClient`
+- `BagageServiceClient`
+- `VolServiceClient`  
+  - Méthodes courantes : `get_flight_status(numero_vol)`, `get_gate(numero_vol)`, `subscribe_updates(numero_vol)`
+  - Configuration : clé API via `VOL_SERVICE_API_KEY`, endpoint configurable via `VOL_SERVICE_URL`
+  - Tests : fournir un mock (`MockVolServiceClient`) ou une fixture pytest pour isoler le DecisionEngine
 
 ## Lancer les tests
 
-Pour exécuter les tests spécifiques à ce service :
-
-```bash
-poetry run pytest tests/weather/
+Pour exécuter les tests :
 ```
+poetry run pytest tests/orientation/
+```
+
+## Notes
+
+Le DecisionEngine est modulaire et extensible : ajouter des règles, priorisations et métriques améliore l’optimisation du parcours passager. Les instructions incluent le temps estimé pour chaque action et sont priorisées selon criticité et délai.
