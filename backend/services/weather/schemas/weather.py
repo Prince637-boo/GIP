@@ -1,28 +1,14 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, Union
-from datetime import datetime
+from pydantic import BaseModel
+from typing import List, Optional
 
-
-class WeatherBase(BaseModel):
-    location_name: str
-    latitude: float
-    longitude: float
+class WeatherData(BaseModel):
     temperature: float
     wind_speed: float
+    condition: str
 
-
-class WeatherCreate(WeatherBase):
-    """
-    Schéma utilisé pour créer un enregistrement météo
-    """
-    pass
-
-
-class Weather(WeatherBase):
-    """
-    Schéma utilisé pour retourner des données depuis l'API
-    """
-    id: int
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+class WeatherResponse(BaseModel):
+    latitude: float
+    longitude: float
+    current: WeatherData
+    forecast: Optional[List[WeatherData]] = None
+    alert: Optional[str] = None

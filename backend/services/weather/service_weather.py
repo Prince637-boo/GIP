@@ -1,25 +1,46 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from services.weather.models.weather import Weather
-from services.weather.schemas.weather import WeatherCreate
+import json
 from datetime import datetime, timedelta
+from services.weather.redis_client import redis_client
+from services.weather.services.open_meteo import OpenMeteoService
+from services.weather.schemas.weather import WeatherResponse
 
-async def get_latest_weather_by_coords(db: AsyncSession, lat: float, lon: float, max_age_hours: int = 1):
-    """
-    Récupère le relevé météo le plus récent pour des coordonnées données,
-    s'il n'est pas plus vieux que max_age_hours.
-    """
-    stmt = select(Weather).where(
-        Weather.latitude == lat,
-        Weather.longitude == lon,
-        Weather.created_at >= datetime.utcnow() - timedelta(hours=max_age_hours)
-    ).order_by(Weather.created_at.desc())
-    result = await db.execute(stmt)
-    return result.scalars().first()
+CACHE_TTL = 300  # 5 minutes
 
-async def create_weather_data(db: AsyncSession, weather: WeatherCreate):
-    db_weather = Weather(**weather.model_dump())
-    db.add(db_weather)
-    await db.commit()
-    await db.refresh(db_weather)
-    return db_weather
+class WeatherService:
+    def __init__(self, open_meteo: OpenMeteoService):
+        self.open_meteo = open_meteo
+    
+    async def get_weather(self, lat: float, lon: float):
+        key = f"weather:{lat}:{lon}"
+        cached = await redis_client.get(key)
+        if cached:
+            return WeatherResponse.parse_raw(cached)
+
+        current_weather = await self.open_meteo.fetch_weather(lat, lon)
+
+        # Analyse simple des prévisions ou tendances
+        alert = None
+        if current_weather.wind_speed > 20:
+            alert = "Vents forts prévus, retards possibles"
+        elif current_weather.temperature < 0:
+            alert = "Températures négatives, conditions hivernales"
+
+        response = WeatherResponse(
+            latitude=lat,
+            longitude=lon,
+            current=current_weather,
+            alert=alert
+        )
+
+        await redis_client.set(key, response.json(), ex=CACHE_TTL)
+
+        # Notification automatique via Redis Pub/Sub
+        if alert:
+            await redis_client.publish("weather.alerts", json.dumps({
+                "lat": lat,
+                "lon": lon,
+                "alert": alert,
+                "timestamp": datetime.utcnow().isoformat()
+            }))
+
+        return response

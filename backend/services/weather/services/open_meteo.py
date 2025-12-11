@@ -1,29 +1,26 @@
 import httpx
 import logging
 from pydantic import ValidationError
-from services.weather.config import settings
-from services.weather.schemas.open_meteo import OpenMeteoResponse
+from services.weather.schemas.weather import WeatherData
+
+logger = logging.getLogger(__name__)
 
 class OpenMeteoService:
-    def __init__(self):
-        self.api_url = settings.WEATHER_API_URL
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, api_url: str):
+        self.api_url = api_url
     
-    async def fetch_weather_from_api(self, latitude: float, longitude: float) -> OpenMeteoResponse | None:
-        params = {
-            "latitude": latitude,
-            "longitude": longitude,
-            "current_weather": "true",
-        }
+    async def fetch_weather(self, lat: float, lon: float):
+        params = {"latitude": lat, "longitude": lon, "current_weather": "true"}
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(self.api_url, params=params)
-                response.raise_for_status()
-                # Valider la réponse avec Pydantic
-                return OpenMeteoResponse.model_validate(response.json())
-            except httpx.HTTPStatusError as e:
-                self.logger.error(f"HTTP error fetching weather data: {e}")
-                return None
-            except ValidationError as e:
-                self.logger.error(f"Invalid data structure from Open-Meteo API: {e}")
-                return None
+                r = await client.get(self.api_url, params=params)
+                r.raise_for_status()
+                data = r.json()
+                return WeatherData(
+                    temperature=data["current_weather"]["temperature"],
+                    wind_speed=data["current_weather"]["windspeed"],
+                    condition=data["current_weather"].get("weathercode", "clear")
+                )
+            except (httpx.HTTPError, ValidationError) as e:
+                logger.error(f"Erreur météo: {e}")
+                return WeatherData(temperature=20.0, wind_speed=0.0, condition="unknown")
