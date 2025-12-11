@@ -117,7 +117,7 @@ async def list_baggages(
 
 
 # -------------------------------
-# BAGGAGE DETAIL (with events + scan logs)
+# DETAILS D'UN BAGAGE
 # -------------------------------
 @router.get(
     "/{tag}",

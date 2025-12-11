@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -26,4 +26,9 @@ class Baggage(Base):
     events = relationship("BaggageEvent", back_populates="baggage", lazy="selectin")
     
     qr_code_path = Column(String(255), nullable=True)
+    
+    # --- GPS ---
+    last_latitude = Column(Float, nullable=True)
+    last_longitude = Column(Float, nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
 

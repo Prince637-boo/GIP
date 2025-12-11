@@ -1,6 +1,6 @@
+from ..redis.redis_c import redis_client
 from fastapi import APIRouter, WebSocket
 import asyncio
-import redis.asyncio as redis
 
 router = APIRouter(prefix="/ws/baggages")
 
@@ -12,23 +12,17 @@ async def baggage_stream(ws: WebSocket):
     Événements écoutés depuis Redis :
     - "baggage.scan" : lorsqu'un bagage est scanné
     - "baggage.status" : lorsqu'un bagage change de statut
+    - "baggage.gps": lorque la position du baggage est envoyé
 
     Frontend peut se connecter sur : ws://<host>/ws/baggages/stream
     """
     await ws.accept()
     print("WebSocket connection accepted")
 
-    # -------------------------------
-    # Connexion Redis
-    # -------------------------------
-    redis_client = redis.Redis(
-        host="localhost",  # ou settings.REDIS_HOST
-        port=6379,         # ou settings.REDIS_PORT
-        decode_responses=True
-    )
+
 
     pubsub = redis_client.pubsub()
-    await pubsub.subscribe("baggage.scan", "baggage.status")
+    await pubsub.subscribe("baggage.scan", "baggage.status", "baggage.gps")
     print("Subscribed to Redis channels: baggage.scan, baggage.status")
 
     try:
@@ -43,6 +37,6 @@ async def baggage_stream(ws: WebSocket):
         await ws.close()
     finally:
         # Nettoyage : désabonnement et fermeture du client Redis
-        await pubsub.unsubscribe("baggage.scan", "baggage.status")
+        await pubsub.unsubscribe("baggage.scan", "baggage.status", "baggage.gps")
         await redis_client.close()
         print("Redis connection closed and unsubscribed")

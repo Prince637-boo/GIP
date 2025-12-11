@@ -11,14 +11,9 @@ from .routers.ws import router as ws_router
 # INITIALISATION DE L'APPLICATION
 # -------------------------------
 app = FastAPI(
-    title="Baggage Tracking Service",
+    title="Service de Traçage des Baggages",
     description="""
     Service backend pour le suivi des bagages en temps réel.
-    
-    Routes principales :
-    - /baggages : pour les passagers et compagnies
-    - /admin/baggages : pour les administrateurs
-    - /ws/baggages/stream : WebSocket pour événements en temps réel
     """,
     version="1.0.0",
 )

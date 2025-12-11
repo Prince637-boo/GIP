@@ -60,3 +60,10 @@ async def get_baggage(db: AsyncSession, tag: str) -> Baggage | None:
 async def list_baggages_for_user(db: AsyncSession, user_id: str):
     q = await db.execute(select(Baggage).where(Baggage.owner_id == user_id))
     return q.scalars().all()
+
+
+async def get_baggage_by_device(db, device_id: str):
+    result = await db.execute(
+        select(Baggage).where(Baggage.tracker_device_id == device_id)
+    )
+    return result.scalar_one_or_none()

@@ -15,3 +15,8 @@ class BaggageEventOut(BaseModel):
 
     
     model_config = ConfigDict(from_attributes=True)
+
+class BaggageScanGPS(BaseModel):
+    tag: str
+    latitude: float
+    longitude: float
