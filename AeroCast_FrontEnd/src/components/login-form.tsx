@@ -19,7 +19,7 @@ import { useForm } from "react-hook-form";
 import { valibotResolver } from "@hookform/resolvers/valibot";
 import { loginSchema, type LoginInput } from "@/schemas/auth.schemas";
 import { mockLogin } from "@/lib/apiMock";
-import { useAuthStore } from "@/stores/useAuth";
+import { useAuthStore as useAuth } from "@/stores/useAuth";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +29,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setAuth } = useAuthStore();
+  const { setAuth } = useAuth();
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -99,6 +99,7 @@ export function LoginForm({
                 <Input
                   id="email"
                   type="email"
+                  defaultValue="admin@aerocast.com"
                   placeholder="admin@aerocast.com"
                   {...register("email")}
                 />
@@ -122,6 +123,7 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  defaultValue="password123"
                   placeholder="••••••••"
                   {...register("password")}
                 />

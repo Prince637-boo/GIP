@@ -13,6 +13,24 @@ export const sidebarConfig: SidebarItem[] = [
     icon: "mdi-light--view-dashboard",
   },
   {
+    title: "Smart Feed",
+    href: "/feed",
+    icon: "mdi-light--home",
+    badge: "NEW",
+  },
+  {
+    title: "Navigation",
+    href: "/navigation",
+    icon: "mdi-light--navigation",
+    badge: "NEW",
+  },
+  {
+    title: "Suivi Bagages",
+    href: "/baggage-tracking",
+    icon: "mdi-light--package-variant",
+    badge: "NEW",
+  },
+  {
     title: "Météo",
     href: "/dashboard/meteo",
     icon: "mdi-light--weather-cloudy",
@@ -53,6 +71,24 @@ export const sidebarConfig: SidebarItem[] = [
         title: "Incidents",
         href: "/dashboard/bagages/incidents",
         icon: "mdi-light--alert-circle",
+      },
+    ],
+  },
+  {
+    title: "Administration",
+    href: "/admin",
+    icon: "mdi-light--shield-account",
+    badge: "ADMIN",
+    items: [
+      {
+        title: "Tour de Contrôle",
+        href: "/admin/control-tower",
+        icon: "mdi-light--radar",
+      },
+      {
+        title: "Gestion des Alertes",
+        href: "/admin/alerts",
+        icon: "mdi-light--bell-alert",
       },
     ],
   },

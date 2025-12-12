@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuth";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,9 @@ export function DashboardHeader() {
           </div>
 
           <nav className="flex items-center space-x-2">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Notifications (optionnel) */}
             <Button variant="ghost" size="icon">
               <span className="icon-[mdi-light--bell] text-xl" />

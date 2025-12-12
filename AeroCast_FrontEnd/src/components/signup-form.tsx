@@ -19,12 +19,12 @@ import { useForm } from "react-hook-form";
 import { valibotResolver } from "@hookform/resolvers/valibot";
 import { registerSchema, type RegisterInput } from "@/schemas/auth.schemas";
 import { mockRegister } from "@/lib/apiMock";
-import { useAuthStore } from "@/stores/useAuth";
+import { useAuthStore as useAuth } from "@/stores/useAuth";
 import { useState } from "react";
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuth } = useAuth();
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
