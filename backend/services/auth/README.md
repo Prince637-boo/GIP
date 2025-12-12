@@ -31,5 +31,5 @@ Ce service nécessite les variables suivantes dans le fichier `.env` :
 Pour exécuter les tests spécifiques à ce service :
 
 ```bash
-poetry run pytest tests/auth/
+pytest tests/auth/
 ```

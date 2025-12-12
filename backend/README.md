@@ -87,7 +87,6 @@ Les tests utilisent pytest :
 ```bash
 pytest
 ```
-Chaque microservice contient un dossier `tests/` dédié.
 
 ## Documentation interne (Swagger)
 
