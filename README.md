@@ -96,5 +96,5 @@ Le service `weather` utilise les données Open Météo, mais la structure est pr
 ### 1. Clonage du Dépôt
 
 ```bash
-git clone [https://github.com/Prince637-boo/AeroCast.git](https://github.com/Prince637-boo/AeroCast.git)
+git clone [https://github.com/Prince637-boo/GIP.git](https://github.com/Prince637-boo/GIP.git)
 cd AeroCast
