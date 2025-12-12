@@ -6,6 +6,13 @@ Ce dépôt contient le cœur de la plateforme, surnommé **AeroCast**, qui met e
 
 ---
 
+> 
+> Toutes les fonctionnalités de base (IA Météo, Traçabilité Bagages, Microservices) ont été **développées et validées unitairement**. Le code des services backend est complet.
+> 
+> Les systèmes sont actuellement en cours d'intégration dans l'environnement conteneurisé complet (Docker Compose) pour les tests finaux et le déploiement. **Le code est prêt, l'infrastructure est en cours de finalisation.**
+> 
+> ---
+
 ## 🎯 Vision et Piliers Stratégiques
 
 Le GIP se fonde sur la résilience opérationnelle à travers trois piliers technologiques essentiels :
