@@ -30,7 +30,8 @@ app = FastAPI(
     version=settings.VERSION,
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    root_path="/api/orientation"
 )
 
 Instrumentator().instrument(app).expose(app)

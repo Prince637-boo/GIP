@@ -21,6 +21,7 @@ app = FastAPI(
     Service backend pour le suivi des bagages en temps réel.
     """,
     version="1.0.0",
+    root_path="/api/baggages",
 )
 
 Instrumentator().instrument(app).expose(app)

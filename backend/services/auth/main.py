@@ -4,7 +4,13 @@ from .routers.auth import router as auth_router
 from .middleware.logging import LoggingMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
-app = FastAPI(title="Auth Service", version="1.0.0")
+app = FastAPI(
+    title="Auth Service",
+    root_path="/api/auth",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+)
+
 
 # Middlewares
 app.add_middleware(LoggingMiddleware)
