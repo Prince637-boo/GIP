@@ -9,6 +9,9 @@ from .routers.ws import router as ws_router
 from .routers.gps import router as gps_router
 from .routers.trackers import router as trackers_router
 
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
 # -------------------------------
 # INITIALISATION DE L'APPLICATION
 # -------------------------------
@@ -19,6 +22,8 @@ app = FastAPI(
     """,
     version="1.0.0",
 )
+
+Instrumentator().instrument(app).expose(app)
 
 # -------------------------------
 # INITIALISATION OPENTELEMETRY

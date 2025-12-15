@@ -1,13 +1,69 @@
 http:
   middlewares:
-    add-headers:
+    strip-service-prefix:
+      stripPrefixRegex:
+        regex:
+          - "^/api/auth"
+          - "^/api/baggage"
+          - "^/api/weather"
+          - "^/api/orientation"
+
+    security-headers:
       headers:
         frameDeny: true
-        sslRedirect: true
         browserXssFilter: true
+        contentTypeNosniff: true
 
   routers:
-    api-dashboard:
-      rule: "PathPrefix(`/api`)"
+    auth-router:
+      rule: "PathPrefix(`/api/auth`)"
       entryPoints: ["web"]
-      service: api-service
+      middlewares:
+        - strip-service-prefix
+        - security-headers
+      service: auth-service
+
+    baggage-router:
+      rule: "PathPrefix(`/api/baggage`)"
+      entryPoints: ["web"]
+      middlewares:
+        - strip-service-prefix
+        - security-headers
+      service: baggage-service
+
+    weather-router:
+      rule: "PathPrefix(`/api/weather`)"
+      entryPoints: ["web"]
+      middlewares:
+        - strip-service-prefix
+        - security-headers
+      service: weather-service
+
+    orientation-router:
+      rule: "PathPrefix(`/api/orientation`)"
+      entryPoints: ["web"]
+      middlewares:
+        - strip-service-prefix
+        - security-headers
+      service: orientation-service
+
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth:8000"
+
+    baggage-service:
+      loadBalancer:
+        servers:
+          - url: "http://baggage:8000"
+
+    weather-service:
+      loadBalancer:
+        servers:
+          - url: "http://weather:8000"
+
+    orientation-service:
+      loadBalancer:
+        servers:
+          - url: "http://orientation:8000"

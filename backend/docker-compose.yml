@@ -15,8 +15,11 @@ services:
     volumes:
       - aerocast_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   redis:
     image: redis:7
@@ -44,37 +47,39 @@ services:
     build:
       context: .
       dockerfile: services/auth/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8001:8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=Host(`auth.localhost`) && PathPrefix(`/`)"
-      - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.services.auth.loadbalancer.server.port=8000"
 
   baggage:
     build:
       context: .
       dockerfile: services/baggage/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     env_file: .env
     depends_on:
       - postgres
     ports:
       - "8002:8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.baggage.rule=Host(`baggage.localhost`) && PathPrefix(`/`)"
-      - "traefik.http.routers.baggage.entrypoints=web"
-      - "traefik.http.services.baggage.loadbalancer.server.port=8000"
 
   weather:
     build:
       context: .
       dockerfile: services/weather/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     env_file: .env
     environment:
       - RUN_MIGRATIONS=true
@@ -87,15 +92,15 @@ services:
     volumes:
       - ./services/weather:/app/services/weather
       - ./libs:/app/libs
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.weather.rule=Host(`weather.localhost`)"
-      - "traefik.http.services.weather.loadbalancer.server.port=8000"
-  
+
   orientation:
     build:
       context: .
       dockerfile: services/orientation/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     env_file: .env
     environment:
       - RUN_MIGRATIONS=true
@@ -108,11 +113,7 @@ services:
     volumes:
       - ./services/orientation:/app/services/orientation
       - ./libs:/app/libs
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.orientation.rule=Host(`orientation.localhost`)"
-      - "traefik.http.services.orientation.loadbalancer.server.port=8000"
-  
+
 
   # -------------------------------
   # Message Broker
@@ -136,10 +137,15 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.0
@@ -184,7 +190,6 @@ services:
       - "4318:4318"    # OTLP HTTP
       - "6831:6831/udp" # Jaeger Thrift UDP
 
-
   # -------------------------------
   # Prometheus
   # -------------------------------
@@ -221,8 +226,12 @@ services:
   celery-worker:
     build:
       context: .
-      dockerfile: services/weather/Dockerfile  
-    command: celery -A tasks worker --loglevel=info
+      dockerfile: services/weather/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    command: celery -A services.weather.workers.tasks worker --loglevel=info
     depends_on:
       - rabbitmq
       - postgres
@@ -232,12 +241,15 @@ services:
       - ./services/weather:/app/services/weather
       - ./libs:/app/libs
 
-
   celery-beat:
     build:
       context: .
-      dockerfile: services/weather/Dockerfile  
-    command: celery -A tasks beat --loglevel=info
+      dockerfile: services/weather/Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    command: celery -A services.weather.workers.tasks beat --loglevel=info
     depends_on:
       - rabbitmq
       - postgres

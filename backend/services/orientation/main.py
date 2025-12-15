@@ -6,6 +6,7 @@ import logging
 from .core.config import get_settings
 from .routers import orientation
 from .middleware.logging import setup_logging
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Configuration du logging
 setup_logging()
@@ -31,6 +32,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+Instrumentator().instrument(app).expose(app)
 
 # Configuration CORS
 app.add_middleware(
